@@ -5,7 +5,7 @@ import connectDB from './config/db.js'
 import authRoutes from './routes/authRoutes.js'
 import { notFound } from './middleware/notFound.js'
 import { errorHandler } from './middleware/errorHandler.js'
-
+import weatherRoutes  from './routes/weatherRoutes.js'
 
 dotenv.config();
 connectDB();
@@ -22,6 +22,9 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 
 const PORT = process.env.PORT || 5000
+
+app.use('/api/auth', authRoutes);
+app.use('/api/weather', weatherRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

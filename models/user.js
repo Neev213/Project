@@ -1,5 +1,16 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import validator from 'validator';
+
+const typoDomains = [
+    'gmail.om',
+    'gmail.con',
+    'gmial.com',
+    'gamil.com',
+    'gmail.co',
+    'yahoo.con',
+    'hotmail.con',
+];
 
 const userSchema = mongoose.Schema({
     name: {
@@ -13,8 +24,18 @@ const userSchema = mongoose.Schema({
         unique: true,
         lowercase: true,
         trim: true,
-        match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address'],
+        
+
+        validate: {
+            validator: (value) => {
+                if (!validator.isEmail(value)) return false;
+                const domain = value.split('@')[1];
+                return !typoDomains.includes(domain);
+            },
+            message: 'Please use a valid email address',
+        },
     },
+    
     password: {
         type: String,
         required: [true, 'Password is required'],

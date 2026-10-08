@@ -1,7 +1,7 @@
 import Favorite from "../models/Favorite.js";
 
 export const getFavorites = async (req, res) => {
-    const favorites = (await Favorite.find({ user: req.user._id })).sort({
+    const favorites = await Favorite.find({ user: req.user._id }).sort({
         createdAt: -1,
     });
     res.json(favorites);

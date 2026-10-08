@@ -11,7 +11,7 @@ export const errorHandler = (err, req, res, next) => {
 
     if(err.code === 11000){
         statusCode = 400;
-        message = 'Email already in use';
+        message = 'Already exists';
     }
 
     if(err.name === 'CastError'){

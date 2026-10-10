@@ -1,12 +1,17 @@
-import CanvasRoot from "./three/CanvasRoot"
+import { Routes, Route } from 'react-router-dom'
+import { SceneProvider } from './context/SceneContext'
+import CanvasRoot from './three/CanvasRoot'
+import Landing from './pages/Landing'
+import Login from './pages/Login'
+
 export default function App() {
   return (
-    <>
+    <SceneProvider>
       <CanvasRoot />
-      <div className="relative z-10 p-6 text-white">
-        <h1 className="text-2xl font-semibold">Weather App</h1>
-      </div>
-    </>
-    
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    </SceneProvider>
   )
 }

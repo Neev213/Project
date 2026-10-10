@@ -5,11 +5,11 @@ import Moon from "../objects/Moon";
 
 export default function SpaceScene() {
     return (
-        <>
-            <Stars />
-            <Earth />
+        <>           
+            <Stars/>
+            <Earth/>
+            <Sun/>
             <Moon/>
-            <Sun />
         </>
     )
 }

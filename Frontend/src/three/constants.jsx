@@ -1,0 +1,1 @@
+export const SUN_POSITION = [5, 2, -1];

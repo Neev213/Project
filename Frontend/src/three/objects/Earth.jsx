@@ -26,14 +26,22 @@ const fragmentShader = `
         vec3 night = texture2D(nightMap, vUv).rgb;
 
         float light = dot(normalize(vWorldNormal), normalize(sunDirection));
-        float dayMix = smoothstep(-0.15, 0.25, light);
 
-        vec3 dayColor = day * (0.15 + max(light, 0.0));
-        vec3 nightColor = night * 1.6 + day * 0.02;
+        // narrower, sharper day/night transition
+        float dayMix = smoothstep(-0.05, 0.15, light);
+
+        vec3 dayColor = day * (0.05 + max(light, 0.0) * 1.1);
+
+        // keep only the bright city lights, kill the dim background
+        float lum = dot(night, vec3(0.299, 0.587, 0.114));
+        float lights = smoothstep(0.05, 0.4, lum);
+        lights = pow(lights, 1.3);
+        vec3 nightColor = vec3(1.0, 0.7, 0.3) * lights * 4.0;
+        nightColor += day * vec3(0.05, 0.07, 0.12);
 
         gl_FragColor = vec4(mix(nightColor, dayColor, dayMix), 1.0);
         #include <colorspace_fragment>
-    }
+}
 `
 
 export default function() {

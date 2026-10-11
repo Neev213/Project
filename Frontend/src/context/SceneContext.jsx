@@ -5,9 +5,15 @@ const SceneContext = createContext(null)
 export function SceneProvider({ children }) {
     const scroll = useRef(0)
     const mouse = useRef({ x: 0, y: 0 })
+    const stage = useRef(null)
+    const sun = useRef(null)
+    const moon = useRef(null)
     const [phase, setPhase] = useState('landing')
 
-    const value = useMemo(() => ({ scroll, mouse, phase, setPhase }), [phase])
+    const value = useMemo(
+        () => ({ scroll, mouse, stage, sun, moon, phase, setPhase }),
+        [phase]
+    )
 
     return <SceneContext.Provider value={value}>{children}</SceneContext.Provider>
 }

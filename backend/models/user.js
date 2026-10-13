@@ -1,66 +1,50 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
-import validator from 'validator';
+import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
-const typoDomains = [
-    'gmail.om',
-    'gmail.con',
-    'gmial.com',
-    'gamil.com',
-    'gmail.co',
-    'yahoo.con',
-    'hotmail.con',
-];
-
-const userSchema = mongoose.Schema({
-    name: {
-        type: String,
-        required: [true, 'Name is required'],
-        trim: true,
-    },
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: [true, 'Name is required'], trim: true },
     email: {
-        type: String,
-        required: [true, 'Email is required'],
-        unique: true,
-        lowercase: true,
-        trim: true,
-        
-
-        validate: {
-            validator: (value) => {
-                if (!validator.isEmail(value)) return false;
-                const domain = value.split('@')[1];
-                return !typoDomains.includes(domain);
-            },
-            message: 'Please use a valid email address',
-        },
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
-    
     password: {
-        type: String,
-        required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters long'],
-        select: false,
+      type: String,
+      minlength: [8, 'Password must be at least 8 characters'],
+      select: false,
+      // Google accounts have no password
+      required: [function () { return this.authProvider === 'local' }, 'Password is required'],
     },
 
-    preferredUnit: {
-        type: String,
-        enum: ['celsius', 'fahrenheit'],
-        default: 'celsius',
-    },
-}, {timestamps: true});
+    authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+    googleId: { type: String, index: true, sparse: true },
 
-userSchema.pre('save', async function(){
-    if(!this.isModified('password')) return;
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-});
+    // default true so users that existed before verification stay verified.
+    // register() sets it to false explicitly for new local accounts.
+    isVerified: { type: Boolean, default: true },
 
-userSchema.methods.matchPassword = async function (enteredPassword){
-    return await bcrypt.compare(enteredPassword, this.password);
+    // email verification code (stored hashed, hidden from normal queries)
+    verifyCodeHash: { type: String, select: false },
+    verifyCodeExpires: { type: Date, select: false },
+    verifyCodeSentAt: { type: Date, select: false },
+    verifyAttempts: { type: Number, default: 0, select: false },
 
-};
+    preferredUnit: { type: String, default: 'metric' }, // <- keep YOUR existing definition
+  },
+  { timestamps: true }
+)
 
-const User = mongoose.model('User', userSchema);
+userSchema.pre('save', async function () {
+  if (!this.isModified('password') || !this.password) return
+  const salt = await bcrypt.genSalt(10)
+  this.password = await bcrypt.hash(this.password, salt)
+})
 
-export default User;
+userSchema.methods.matchPassword = function (entered) {
+  return bcrypt.compare(entered, this.password)
+}
+
+export default mongoose.model('User', userSchema)

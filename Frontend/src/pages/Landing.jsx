@@ -1,28 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import Overlay from '../components/Overlay'
 import Words from '../components/Words'
+import LandingCTA from '../components/LandingCTA'
 import { useScrollProgress } from '../hooks/useScrollProgress'
 
 // screen index (0-4) -> dot index (0-3)
 const dotOf = [0, 0, 1, 2, 3]
 
 const features = [
-  { name: 'Rain', text: 'Rain surprises you. We show where it is falling right now.' },
-  { name: 'Snow', text: 'Cold fronts are hard to picture. We map them on the globe.' },
-  { name: 'Clouds', text: 'Forecasts feel abstract. We let you read the sky itself.' },
+    { name: 'Rain', text: 'Rain surprises you. We show where it is falling right now.' },
+    { name: 'Snow', text: 'Cold fronts are hard to picture. We map them on the globe.' },
+    { name: 'Clouds', text: 'Forecasts feel abstract. We let you read the sky itself.' },
 ]
 
 function Fade({ show, children, className = '' }) {
-  return (
-    <div
-      className={`transition-all duration-700 ease-out ${
-        show ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
-      } ${className}`}
-    >
-      {children}
-    </div>
-  )
+    return (
+        <div
+        className={`transition-all duration-700 ease-out ${
+            show ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+        } ${className}`}
+        >
+        {children}
+        </div>
+    )
 }
 
 const pill = 'rounded-full border border-white/40 px-6 py-2 transition hover:bg-white/10'
@@ -48,6 +48,7 @@ export default function Landing() {
 
         <div
             ref={wrapperRef}
+            data-fade
             className="relative z-10 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
         >
             {/* 0 - Hero */}
@@ -109,9 +110,8 @@ export default function Landing() {
                 show={active === 4}
                 className="mb-8 text-5xl font-light md:text-6xl"
             />
-            <Fade show={active === 4} className="flex gap-4">
-                <Link to="/login" className={pill}>Login</Link>
-                <Link to="/login" className={pill}>Sign up</Link>
+            <Fade show={active === 4}>
+                <LandingCTA />
             </Fade>
             </section>
         </div>

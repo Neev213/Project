@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useScene } from '../../context/SceneContext'
-import { KEYFRAMES } from '../keyframes.js'
+import { KEYFRAMES, LOGIN_FRAME } from '../keyframes.js'
 
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max)
@@ -10,7 +10,6 @@ const damp = (current, target, lambda, delta) =>
 const smoothstep = (t) => t * t * (3 - 2 * t)
 const lerp3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]
 
-// Find the two keyframes around p and blend between them
 function sample(p) {
   let i = 0
   while (i < KEYFRAMES.length - 2 && p > KEYFRAMES[i + 1].p) i++
@@ -27,9 +26,23 @@ function sample(p) {
   }
 }
 
+// Blend the scroll pose toward the login pose by amount t (0 to 1)
+function mixFrame(a, b, t) {
+  return {
+    cam: lerp3(a.cam, b.cam, t),
+    earth: lerp3(a.earth, b.earth, t),
+    scale: lerp(a.scale, b.scale, t),
+    rotY: lerp(a.rotY, b.rotY, t),
+    vis: lerp(a.vis, b.vis, t),
+  }
+}
+
 export default function CameraRig() {
   const { scroll, stage, sun, moon, phase, mouse } = useScene()
-  const progress = useRef(0)
+
+  // If the page loads straight on /login, start already in place
+  const progress = useRef(phase === 'landing' ? 0 : 1)
+  const blend = useRef(phase === 'landing' ? 0 : 1)
   const smooth = useRef({ x: 0, y: 0 })
 
   useFrame((state, delta) => {
@@ -38,19 +51,23 @@ export default function CameraRig() {
     // Scroll progress, eased
     const target = phase === 'landing' ? scroll.current : 1
     progress.current = damp(progress.current, target, 4, delta)
-    const s = sample(progress.current)
+
+    // 0 = landing pose, 1 = login pose (this is the "fly")
+    blend.current = damp(blend.current, phase === 'landing' ? 0 : 1, 2.5, delta)
+
+    const s = mixFrame(sample(progress.current), LOGIN_FRAME, smoothstep(blend.current))
 
     // Smoothed mouse
     smooth.current.x = damp(smooth.current.x, mouse.current.x, 3, delta)
     smooth.current.y = damp(smooth.current.y, mouse.current.y, 3, delta)
 
-    // Camera: keyframe position + cursor drift, then look at center
+    // Camera: pose + cursor drift, then look at center
     camera.position.set(s.cam[0], s.cam[1], s.cam[2])
     camera.position.x += smooth.current.x * 0.35
     camera.position.y += smooth.current.y * 0.2
     camera.lookAt(0, 0, 0)
 
-    // Stage (Earth + Moon): position, scale, rotation
+    // Stage (Earth + Moon)
     const k = clamp(size.width / size.height / (16 / 9), 0.4, 1.2)
     if (stage.current) {
       stage.current.position.set(s.earth[0] * k, s.earth[1], s.earth[2])
@@ -60,7 +77,7 @@ export default function CameraRig() {
       stage.current.rotation.x = -smooth.current.y * 0.05
     }
 
-    // Sun and Moon fade by scaling to near zero (keeps the lights alive)
+    // Sun and Moon fade
     const v = Math.max(s.vis, 0.0001)
     if (sun.current) sun.current.scale.setScalar(v)
     if (moon.current) moon.current.scale.setScalar(v)

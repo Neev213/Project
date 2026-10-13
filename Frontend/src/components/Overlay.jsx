@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 export default function Overlay({ active, total = 4 }) {
     return (
-        <header className="pointer-events-none fixed inset-x-0 top-0 z-20 flex items-center justify-between px-8 py-6 text-white">
+        <header data-fade className="pointer-events-none fixed inset-x-0 top-0 z-20 flex items-center justify-between px-8 py-6 text-white">
         <div className="pointer-events-auto flex items-center gap-6">
             <Link to="/" className="text-lg font-semibold tracking-[0.25em]">
             WEATHER EARTH

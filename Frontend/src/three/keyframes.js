@@ -8,3 +8,11 @@ export const KEYFRAMES = [
     { p: 0.75, cam: [0, 0, 9],   earth: [-2.6, -0.3, 0], scale: 2.2, rotY: 3.6, vis: 0 },
     { p: 1,    cam: [0, 0, 9],   earth: [0, 0, 0],       scale: 1.0, rotY: 4.2, vis: 1 },
 ]
+
+export const LOGIN_FRAME = {
+    cam: [0, 0, 7],
+    earth: [2.4, -0.1, 0],
+    scale: 1.25,
+    rotY: 4.8,
+    vis: 1,
+}

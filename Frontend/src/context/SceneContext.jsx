@@ -8,10 +8,11 @@ export function SceneProvider({ children }) {
     const stage = useRef(null)
     const sun = useRef(null)
     const moon = useRef(null)
+    const plunge = useRef(0) // 0 in orbit , 1 = down in the clouds
     const [phase, setPhase] = useState('landing')
 
     const value = useMemo(
-        () => ({ scroll, mouse, stage, sun, moon, phase, setPhase }),
+        () => ({ scroll, mouse, stage, sun, moon, plunge, phase, setPhase }),
         [phase]
     )
 

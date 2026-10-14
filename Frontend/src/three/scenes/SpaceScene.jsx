@@ -4,7 +4,7 @@ import Sun from '../objects/Sun'
 import Moon from '../objects/Moon'
 import { useScene } from '../../context/SceneContext'
 import { LIGHT_POSITION } from '../constants'
-
+import CloudParticles from '../objects/CloudParticles'
 export default function SpaceScene() {
   const { stage, sun, moon } = useScene()
 
@@ -15,6 +15,7 @@ export default function SpaceScene() {
 
       <group ref={stage}>
         <Earth />
+        <CloudParticles />
         <group ref={moon}>
           <Moon />
         </group>

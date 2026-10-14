@@ -3,6 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import { useScene } from '../../context/SceneContext'
 import { KEYFRAMES, LOGIN_FRAME } from '../keyframes.js'
 
+const EARTH_RADIUS = 1 // radius of the sphere in Earth.jsx (before the stage scale)
+const SURFACE_GAP = 0.35 // how far above the surface the camera ends up
+const FOV_START = 30
+const FOV_END = 55 // wider view at the end = stronger sense of speed
+
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max)
 const damp = (current, target, lambda, delta) =>
@@ -26,7 +31,6 @@ function sample(p) {
   }
 }
 
-// Blend the scroll pose toward the login pose by amount t (0 to 1)
 function mixFrame(a, b, t) {
   return {
     cam: lerp3(a.cam, b.cam, t),
@@ -38,9 +42,8 @@ function mixFrame(a, b, t) {
 }
 
 export default function CameraRig() {
-  const { scroll, stage, sun, moon, phase, mouse } = useScene()
+  const { scroll, stage, sun, moon, plunge, phase, mouse } = useScene()
 
-  // If the page loads straight on /login, start already in place
   const progress = useRef(phase === 'landing' ? 0 : 1)
   const blend = useRef(phase === 'landing' ? 0 : 1)
   const smooth = useRef({ x: 0, y: 0 })
@@ -52,7 +55,7 @@ export default function CameraRig() {
     const target = phase === 'landing' ? scroll.current : 1
     progress.current = damp(progress.current, target, 4, delta)
 
-    // 0 = landing pose, 1 = login pose (this is the "fly")
+    // 0 = landing pose, 1 = login pose
     blend.current = damp(blend.current, phase === 'landing' ? 0 : 1, 2.5, delta)
 
     const s = mixFrame(sample(progress.current), LOGIN_FRAME, smoothstep(blend.current))
@@ -61,16 +64,49 @@ export default function CameraRig() {
     smooth.current.x = damp(smooth.current.x, mouse.current.x, 3, delta)
     smooth.current.y = damp(smooth.current.y, mouse.current.y, 3, delta)
 
-    // Camera: pose + cursor drift, then look at center
-    camera.position.set(s.cam[0], s.cam[1], s.cam[2])
-    camera.position.x += smooth.current.x * 0.35
-    camera.position.y += smooth.current.y * 0.2
-    camera.lookAt(0, 0, 0)
+    // Where the Earth is in the world right now
+    const k = clamp(size.width / size.height / (16 / 9), 0.4, 1.2)
+    const earthPos = [s.earth[0] * k, s.earth[1], s.earth[2]]
+
+    // Back on the landing page: bring the plunge back to 0
+    if (phase === 'landing' && plunge.current > 0) {
+      plunge.current = damp(plunge.current, 0, 4, delta)
+    }
+    const p = plunge.current
+
+    // Camera position: login pose, pulled toward the planet by p
+    let [cx, cy, cz] = s.cam
+    if (p > 0) {
+      const dx = cx - earthPos[0]
+      const dy = cy - earthPos[1]
+      const dz = cz - earthPos[2]
+      const len = Math.hypot(dx, dy, dz) || 1
+      const stop = EARTH_RADIUS * s.scale + SURFACE_GAP
+      cx = lerp(cx, earthPos[0] + (dx / len) * stop, p)
+      cy = lerp(cy, earthPos[1] + (dy / len) * stop, p)
+      cz = lerp(cz, earthPos[2] + (dz / len) * stop, p)
+    }
+
+    // Cursor drift fades out during the dive
+    const drift = 1 - p
+    camera.position.set(
+      cx + smooth.current.x * 0.35 * drift,
+      cy + smooth.current.y * 0.2 * drift,
+      cz
+    )
+
+    // Look at the origin normally, at the Earth's center while diving
+    camera.lookAt(lerp(0, earthPos[0], p), lerp(0, earthPos[1], p), lerp(0, earthPos[2], p))
+
+    const fov = lerp(FOV_START, FOV_END, p)
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = fov
+      camera.updateProjectionMatrix()
+    }
 
     // Stage (Earth + Moon)
-    const k = clamp(size.width / size.height / (16 / 9), 0.4, 1.2)
     if (stage.current) {
-      stage.current.position.set(s.earth[0] * k, s.earth[1], s.earth[2])
+      stage.current.position.set(earthPos[0], earthPos[1], earthPos[2])
       stage.current.scale.setScalar(s.scale)
       stage.current.rotation.y = s.rotY
       stage.current.rotation.y += smooth.current.x * 0.08

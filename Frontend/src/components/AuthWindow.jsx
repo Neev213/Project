@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { GoogleLogin } from '@react-oauth/google'
 import GlassPanel from './GlassPanel'
 import { useAuth } from '../context/AuthContext'
+import usePlunge from '../hooks/usePlunge'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 const errMsg = (err) => err.response?.data?.message || 'Something went wrong. Please try again.'
@@ -32,7 +33,6 @@ function Field({ id, label, type = 'text', value, onChange, autoComplete }) {
   )
 }
 
-// Six single-digit boxes with auto-advance, backspace and paste support
 function OtpInput({ digits, setDigits, disabled }) {
   const refs = useRef([])
   const focus = (i) => refs.current[Math.min(Math.max(i, 0), 5)]?.focus()
@@ -87,19 +87,17 @@ export default function AuthWindow() {
   const [cooldown, setCooldown] = useState(0)
 
   const { login, register, verifyEmail, resendCode, loginWithGoogle } = useAuth()
-  const navigate = useNavigate()
+  const startPlunge = usePlunge()
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
   const code = digits.join('')
 
-  // resend countdown
   useEffect(() => {
     if (cooldown <= 0) return
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
     return () => clearTimeout(t)
   }, [cooldown])
 
-  // submit automatically once all 6 digits are in
   useEffect(() => {
     if (step === 'verify' && code.length === 6 && !busy) submitCode()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,8 +127,8 @@ export default function AuthWindow() {
         startVerify()
       } else {
         await login(form.email, form.password)
-        navigate('/dashboard')
-        return
+        startPlunge()
+        return // stay "busy" while the animation plays
       }
     } catch (err) {
       if (err.response?.data?.needsVerification) startVerify()
@@ -145,7 +143,7 @@ export default function AuthWindow() {
     setError('')
     try {
       await verifyEmail(form.email, code)
-      navigate('/dashboard')
+      startPlunge()
       return
     } catch (err) {
       setError(errMsg(err))
@@ -170,7 +168,7 @@ export default function AuthWindow() {
     setError('')
     try {
       await loginWithGoogle(res.credential)
-      navigate('/dashboard')
+      startPlunge()
     } catch (err) {
       setError(errMsg(err))
     }
@@ -241,7 +239,6 @@ export default function AuthWindow() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Login / Sign up toggle */}
             <div className="relative mb-8 flex rounded-full border border-white/15 bg-white/[0.04] p-1">
               {['login', 'signup'].map((m) => (
                 <button

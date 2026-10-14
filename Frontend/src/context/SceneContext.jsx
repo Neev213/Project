@@ -8,11 +8,12 @@ export function SceneProvider({ children }) {
     const stage = useRef(null)
     const sun = useRef(null)
     const moon = useRef(null)
-    const plunge = useRef(0) // 0 in orbit , 1 = down in the clouds
+    const plunge = useRef(0)
+    const weather = useRef(null) // latest weather result, filled by the dashboard
     const [phase, setPhase] = useState('landing')
 
     const value = useMemo(
-        () => ({ scroll, mouse, stage, sun, moon, plunge, phase, setPhase }),
+        () => ({ scroll, mouse, stage, sun, moon, plunge, weather, phase, setPhase }),
         [phase]
     )
 

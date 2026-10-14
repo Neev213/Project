@@ -1,53 +1,80 @@
-import cache from "./cacheService.js";
+import cache from './cacheService.js'
 
-const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search';
-const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
-
+const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search'
+const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
 
 export const getWeatherByCity = async (city) => {
-    const key = `weather:${city.trim().toLowerCase()}`;
+    const key = `weather:${city.trim().toLowerCase()}`
 
-    const cached = cache.get(key);
-    if(cached) return cached;
+    const cached = cache.get(key)
+    if (cached) return cached
 
-    const geoRes = await fetch(
-        `${GEO_URL}?name=${encodeURIComponent(city)}&count=1`
-    );
-    const geoData = await geoRes.json();
+    const geoRes = await fetch(`${GEO_URL}?name=${encodeURIComponent(city)}&count=1`)
+    if (!geoRes.ok) {
+        const error = new Error('Geocoding service unavailable')
+        error.statusCode = 502
+        throw error
+    }
+    const geoData = await geoRes.json()
 
-    if(!geoData.results || geoData.results.length === 0){
-        const error = new Error('City not Found');
-        error.statusCode = 404;
-        throw error;
+    if (!geoData.results || geoData.results.length === 0) {
+        const error = new Error('City not Found')
+        error.statusCode = 404
+        throw error
     }
 
-    const { latitude, longitude, name, country } = geoData.results[0];
+    const { latitude, longitude, name, country } = geoData.results[0]
 
     const params = new URLSearchParams({
         latitude,
         longitude,
-        current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code',
-        daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+        current: [
+            'temperature_2m',
+            'apparent_temperature',
+            'relative_humidity_2m',
+            'is_day',
+            'precipitation',
+            'cloud_cover',
+            'pressure_msl',
+            'wind_speed_10m',
+            'wind_direction_10m',
+            'weather_code',
+        ].join(','),
+        hourly: 'temperature_2m,weather_code,precipitation_probability',
+        daily: [
+            'weather_code',
+            'temperature_2m_max',
+            'temperature_2m_min',
+            'sunrise',
+            'sunset',
+            'uv_index_max',
+            'precipitation_probability_max',
+        ].join(','),
         timezone: 'auto',
-    });
+        forecast_days: '7',
+        forecast_hours: '24',
+    })
 
-    const forecastRes = await fetch(`${FORECAST_URL}?${params}`);
-    if(!forecastRes.ok){
-        const error = new Error('Weather service unavailable');
-        error.statusCode = 502;
-        throw error;
+    const forecastRes = await fetch(`${FORECAST_URL}?${params}`)
+    if (!forecastRes.ok) {
+        const error = new Error('Weather service unavailable')
+        error.statusCode = 502
+        throw error
     }
-    const forecast = await forecastRes.json();
+    const forecast = await forecastRes.json()
 
     const result = {
         city: name,
         country,
         latitude,
         longitude,
+        timezone: forecast.timezone,
+        utcOffsetSeconds: forecast.utc_offset_seconds,
         current: forecast.current,
+        hourly: forecast.hourly,
         daily: forecast.daily,
-    };
+    }
 
-    cache.set(key, result);
-    return result;
+    cache.set(key, result)
+    return result
 }

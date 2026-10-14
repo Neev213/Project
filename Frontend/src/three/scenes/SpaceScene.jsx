@@ -1,17 +1,22 @@
+import { useRef } from 'react'
 import Stars from '../objects/Stars'
 import Earth from '../objects/Earth'
-import Sun from '../objects/Sun'
+import CloudParticles from '../objects/CloudParticles'
 import Moon from '../objects/Moon'
+import Sun from '../objects/Sun'
+import SkyRig from '../rigs/SkyRig'
 import { useScene } from '../../context/SceneContext'
 import { LIGHT_POSITION } from '../constants'
-import CloudParticles from '../objects/CloudParticles'
+
 export default function SpaceScene() {
   const { stage, sun, moon } = useScene()
+  const light = useRef()
 
   return (
     <>
+      <SkyRig lightRef={light} />
       <Stars />
-      <directionalLight position={LIGHT_POSITION} intensity={3} color="#fff1d6" />
+      <directionalLight ref={light} position={LIGHT_POSITION} intensity={3} color="#fff1d6" />
 
       <group ref={stage}>
         <Earth />

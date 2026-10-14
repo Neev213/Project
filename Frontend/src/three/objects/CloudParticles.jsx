@@ -52,7 +52,7 @@ const smooth = (a, b, x) => {
 }
 
 export default function CloudParticles() {
-    const { plunge } = useScene()
+    const { plunge, dash } = useScene()
     const points = useRef()
     const material = useRef()
 
@@ -61,7 +61,7 @@ export default function CloudParticles() {
 
     useFrame((_, delta) => {
         const p = plunge.current
-        const opacity = smooth(0.15, 0.55, p) * 0.9
+        const opacity = smooth(0.15, 0.55, p) * 0.9 * (1 - dash.current)
         if (material.current) material.current.opacity = opacity
         if (points.current) {
         points.current.visible = opacity > 0.01 // skip drawing when invisible

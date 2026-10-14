@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
-import { LIGHT_POSITION } from '../constants'
+import { useScene } from '../../context/SceneContext' // CHANGED: was the LIGHT_POSITION import
 
 const SHOW_ATMOSPHERE = true // set to false to remove the blue rim completely
 
@@ -78,8 +78,8 @@ const atmosphereFragment = /* glsl */ `
 `
 
 export default function Earth() {
-  const earthRef = useRef()
-  const cloudsRef = useRef()
+  const { lightNow } = useScene() // CHANGED: shared light direction, updated every frame by SkyRig
+  const cloudsRef = useRef() // CHANGED: earthRef removed, the Earth no longer spins by itself
 
   const [dayMap, nightMap, cloudMap] = useTexture([
     '/textures/earth_day.jpg',
@@ -87,10 +87,10 @@ export default function Earth() {
     '/textures/earth_clouds.jpg',
   ])
 
-  const sunDirection = useMemo(
-    () => new THREE.Vector3(...LIGHT_POSITION).normalize(),
-    []
-  )
+  // CHANGED: the old fixed sunDirection is replaced by the shared lightNow vector.
+  // On landing/login it equals your old LIGHT_POSITION direction; on the dashboard it
+  // becomes the real sun direction for the chosen city.
+  const sunDirection = lightNow
 
   const earthUniforms = useMemo(
     () => ({
@@ -109,14 +109,15 @@ export default function Earth() {
     [cloudMap, sunDirection]
   )
 
+  // CHANGED: CameraRig now handles the Earth's spin and orientation.
+  // The clouds only drift slowly relative to the ground (0.07 - 0.05 = 0.02, as before).
   useFrame((_, delta) => {
-    earthRef.current.rotation.y += delta * 0.05
-    cloudsRef.current.rotation.y += delta * 0.07
+    cloudsRef.current.rotation.y += delta * 0.02
   })
 
   return (
     <group>
-      <mesh ref={earthRef}>
+      <mesh>
         <sphereGeometry args={[1, 64, 64]} />
         <shaderMaterial
           uniforms={earthUniforms}

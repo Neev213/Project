@@ -1,12 +1,21 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Euler, Quaternion } from 'three'
 import { useScene } from '../../context/SceneContext'
 import { KEYFRAMES, LOGIN_FRAME } from '../keyframes.js'
 
 const EARTH_RADIUS = 1 // radius of the sphere in Earth.jsx (before the stage scale)
-const SURFACE_GAP = 0.35 // how far above the surface the camera ends up
+const SURFACE_GAP = 0.35 // plunge: how far above the surface the dive ends
 const FOV_START = 30
-const FOV_END = 55 // wider view at the end = stronger sense of speed
+const FOV_END = 55
+
+// Dashboard camera, relative to the city
+const DASH_BACK = 0.9 // how far south of the city the camera sits
+const DASH_HEIGHT = 0.55 // how high above the surface
+const DASH_PITCH = (-12 * Math.PI) / 180 // tilt toward the ground (negative = down)
+
+const euler = new Euler()
+const qBase = new Quaternion()
 
 const lerp = (a, b, t) => a + (b - a) * t
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max)
@@ -42,11 +51,12 @@ function mixFrame(a, b, t) {
 }
 
 export default function CameraRig() {
-  const { scroll, stage, sun, moon, plunge, phase, mouse } = useScene()
+  const { scroll, stage, sun, moon, plunge, dash, sky, phase, mouse } = useScene()
 
   const progress = useRef(phase === 'landing' ? 0 : 1)
   const blend = useRef(phase === 'landing' ? 0 : 1)
   const smooth = useRef({ x: 0, y: 0 })
+  const idle = useRef(0) // slow background spin of the Earth
 
   useFrame((state, delta) => {
     const { camera, size } = state
@@ -73,9 +83,15 @@ export default function CameraRig() {
       plunge.current = damp(plunge.current, 0, 4, delta)
     }
     const p = plunge.current
+    const d = dash.current
 
-    // Camera position: login pose, pulled toward the planet by p
+    // Camera position and look target
     let [cx, cy, cz] = s.cam
+    let lx = 0
+    let ly = 0
+    let lz = 0
+
+    // Plunge: dive straight at the planet
     if (p > 0) {
       const dx = cx - earthPos[0]
       const dy = cy - earthPos[1]
@@ -85,18 +101,39 @@ export default function CameraRig() {
       cx = lerp(cx, earthPos[0] + (dx / len) * stop, p)
       cy = lerp(cy, earthPos[1] + (dy / len) * stop, p)
       cz = lerp(cz, earthPos[2] + (dz / len) * stop, p)
+      lx = earthPos[0] * p
+      ly = earthPos[1] * p
+      lz = earthPos[2] * p
     }
 
-    // Cursor drift fades out during the dive
-    const drift = 1 - p
+    // Dashboard: hover just south of the city, above it, looking toward the horizon
+    if (d > 0.001) {
+      const rs = EARTH_RADIUS * s.scale
+      const px = earthPos[0]
+      const py = earthPos[1] - DASH_BACK
+      const pz = earthPos[2] + rs + DASH_HEIGHT
+      const tx = px
+      const ty = py + Math.cos(DASH_PITCH) * 3
+      const tz = pz + Math.sin(DASH_PITCH) * 3
+      cx = lerp(cx, px, d)
+      cy = lerp(cy, py, d)
+      cz = lerp(cz, pz, d)
+      lx = lerp(lx, tx, d)
+      ly = lerp(ly, ty, d)
+      lz = lerp(lz, tz, d)
+    }
+
+    // In the dashboard "up" is world +Z (away from the planet), otherwise +Y
+    camera.up.set(0, 1 - d, d).normalize()
+
+    // Cursor drift: off during the dive, a little on the dashboard
+    const drift = 1 - p * (1 - 0.35 * d)
     camera.position.set(
       cx + smooth.current.x * 0.35 * drift,
       cy + smooth.current.y * 0.2 * drift,
       cz
     )
-
-    // Look at the origin normally, at the Earth's center while diving
-    camera.lookAt(lerp(0, earthPos[0], p), lerp(0, earthPos[1], p), lerp(0, earthPos[2], p))
+    camera.lookAt(lx, ly, lz)
 
     const fov = lerp(FOV_START, FOV_END, p)
     if (Math.abs(camera.fov - fov) > 0.01) {
@@ -106,11 +143,18 @@ export default function CameraRig() {
 
     // Stage (Earth + Moon)
     if (stage.current) {
+      idle.current += delta * 0.05 * (1 - d)
+
       stage.current.position.set(earthPos[0], earthPos[1], earthPos[2])
       stage.current.scale.setScalar(s.scale)
-      stage.current.rotation.y = s.rotY
-      stage.current.rotation.y += smooth.current.x * 0.08
-      stage.current.rotation.x = -smooth.current.y * 0.05
+
+      // Normal orientation: keyframes + idle spin + cursor tilt
+      euler.set(-smooth.current.y * 0.05, s.rotY + idle.current + smooth.current.x * 0.08, 0)
+      qBase.setFromEuler(euler)
+
+      // Dashboard: turn the globe so the chosen city is under the camera
+      if (d > 0.001) qBase.slerp(sky.current.q, d)
+      stage.current.quaternion.copy(qBase)
     }
 
     // Sun and Moon fade

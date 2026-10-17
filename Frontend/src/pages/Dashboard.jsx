@@ -15,7 +15,7 @@ const DEFAULT_CITY = 'London'
 export default function Dashboard() {
   const { setPhase, plunge } = useScene()
   const { user, logout } = useAuth()
-  const { data, loading, error, load } = useWeather()
+  const { data, loading, error, load, prefetch } = useWeather()
 
   // Scene: finish the plunge, fade the white flash
   useEffect(() => {
@@ -42,9 +42,24 @@ export default function Dashboard() {
 
   return (
     <div className="relative z-10 min-h-screen text-white">
+      {/* thin loading bar */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            key="loadbar"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-none fixed inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-white/10"
+          >
+            <div className="h-full w-1/3 animate-[loadbar_1.1s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-sky-300 to-transparent" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 pt-6">
         <span className="text-lg font-semibold tracking-[0.25em]">WEATHER EARTH</span>
-        <SearchBar onSearch={load} loading={loading} />
+        <SearchBar onSearch={load} onPrefetch={prefetch} loading={loading} />
         <div className="flex items-center gap-4 text-sm">
           <span className="text-white/70">{firstName}</span>
           <button
@@ -75,8 +90,9 @@ export default function Dashboard() {
             {loading ? 'Reading the sky...' : 'Search for a city to begin'}
           </p>
         ) : (
+          // No `key` here: the cards stay mounted, so only the very first load plays the
+          // slow entrance animation. Later searches just swap the numbers in place.
           <div
-            key={`${data.latitude},${data.longitude}`}
             className={`grid gap-4 transition-opacity duration-300 lg:grid-cols-[380px_minmax(0,1fr)] ${
               loading ? 'opacity-60' : 'opacity-100'
             }`}

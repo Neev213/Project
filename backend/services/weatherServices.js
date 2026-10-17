@@ -3,6 +3,9 @@ import cache from './cacheService.js'
 const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search'
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
 
+const FORECAST_TTL = 600 // seconds: weather barely changes in 10 minutes
+const GEO_TTL = 3600 // a place's coordinates never change
+
 const httpError = (message, statusCode) => {
     const error = new Error(message)
     error.statusCode = statusCode
@@ -49,7 +52,7 @@ async function loadForecast(latitude, longitude) {
     if (!res.ok) throw httpError('Weather service unavailable', 502)
 
     const forecast = await res.json()
-    cache.set(key, forecast)
+    cache.set(key, forecast, FORECAST_TTL)
     return forecast
 }
 
@@ -94,28 +97,37 @@ export const searchPlaces = async (query) => {
         timezone: r.timezone,
     }))
 
-    cache.set(key, places, 600) // keep for 10 minutes
+    cache.set(key, places, 600)
     return places
 }
 
-// Old behaviour: take the first match for a typed name
+// Typed name: take the first match (the lookup itself is now cached too)
 export const getWeatherByCity = async (city) => {
     const q = city.trim()
+    const geoKey = `geo:${q.toLowerCase()}`
 
-    const geoRes = await fetch(`${GEO_URL}?name=${encodeURIComponent(q)}&count=1&language=en&format=json`)
-    if (!geoRes.ok) throw httpError('Geocoding service unavailable', 502)
-    const geoData = await geoRes.json()
+    let place = cache.get(geoKey)
+    if (!place) {
+        const geoRes = await fetch(
+            `${GEO_URL}?name=${encodeURIComponent(q)}&count=1&language=en&format=json`
+        )
+        if (!geoRes.ok) throw httpError('Geocoding service unavailable', 502)
+        const geoData = await geoRes.json()
 
-    if (!geoData.results || geoData.results.length === 0) {
-        throw httpError('City not Found', 404)
+        if (!geoData.results || geoData.results.length === 0) {
+            throw httpError('City not Found', 404)
+        }
+
+        const { latitude, longitude, name, country, admin1 } = geoData.results[0]
+        place = { name, country, admin1, latitude, longitude }
+        cache.set(geoKey, place, GEO_TTL)
     }
 
-    const { latitude, longitude, name, country, admin1 } = geoData.results[0]
-    const forecast = await loadForecast(latitude, longitude)
-    return buildResult({ name, country, admin1, latitude, longitude }, forecast)
+    const forecast = await loadForecast(place.latitude, place.longitude)
+    return buildResult(place, forecast)
 }
 
-// New: exact place picked from the suggestions
+// Exact place picked from the suggestions
 export const getWeatherByCoords = async (place) => {
     const forecast = await loadForecast(place.latitude, place.longitude)
     return buildResult(place, forecast)

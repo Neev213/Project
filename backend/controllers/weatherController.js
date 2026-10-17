@@ -40,11 +40,15 @@ export const getWeather = async (req, res) => {
         data = await getWeatherByCity(city);
     }
 
-    if (req.user) {
-        await SearchHistory.deleteMany({ user: req.user._id, city: data.city });
-        await SearchHistory.create({ user: req.user._id, city: data.city });
-    }
+    // Answer first. History is saved in the background (and skipped for prefetches),
+    // so MongoDB is no longer on the critical path.
     res.json(data);
+
+    if (req.user && req.query.prefetch !== '1') {
+        SearchHistory.deleteMany({ user: req.user._id, city: data.city })
+            .then(() => SearchHistory.create({ user: req.user._id, city: data.city }))
+            .catch((err) => console.error('Could not save search history:', err.message));
+    }
 };
 
 export const search = async (req, res) => {

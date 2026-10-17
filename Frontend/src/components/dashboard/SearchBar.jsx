@@ -25,7 +25,7 @@ function Highlight({ text, query }) {
   )
 }
 
-export default function SearchBar({ onSearch, loading: weatherLoading }) {
+export default function SearchBar({ onSearch, onPrefetch, loading: weatherLoading }) {
   const [value, setValue] = useState('')
   const [found, setFound] = useState({ q: '', items: [] }) // results and the text they belong to
   const [open, setOpen] = useState(false)
@@ -76,6 +76,16 @@ export default function SearchBar({ onSearch, loading: weatherLoading }) {
       controller.abort()
     }
   }, [query])
+
+  // Head start: after a short pause on a row (or on the top result that Enter would pick),
+  // fetch its weather in the background so choosing it is instant.
+  useEffect(() => {
+    if (!open || !onPrefetch || found.q !== query) return
+    const place = found.items[active >= 0 ? active : 0]
+    if (!place) return
+    const timer = setTimeout(() => onPrefetch(place), 250)
+    return () => clearTimeout(timer)
+  }, [open, active, found, query, onPrefetch])
 
   // Close when clicking elsewhere
   useEffect(() => {

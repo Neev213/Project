@@ -3,27 +3,17 @@ import cache from './cacheService.js'
 const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search'
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
 
-export const getWeatherByCity = async (city) => {
-    const key = `weather:${city.trim().toLowerCase()}`
+const httpError = (message, statusCode) => {
+    const error = new Error(message)
+    error.statusCode = statusCode
+    return error
+}
 
+// Forecast for one point, cached by coordinates (rounded to ~1 km)
+async function loadForecast(latitude, longitude) {
+    const key = `forecast:${latitude.toFixed(2)},${longitude.toFixed(2)}`
     const cached = cache.get(key)
     if (cached) return cached
-
-    const geoRes = await fetch(`${GEO_URL}?name=${encodeURIComponent(city)}&count=1`)
-    if (!geoRes.ok) {
-        const error = new Error('Geocoding service unavailable')
-        error.statusCode = 502
-        throw error
-    }
-    const geoData = await geoRes.json()
-
-    if (!geoData.results || geoData.results.length === 0) {
-        const error = new Error('City not Found')
-        error.statusCode = 404
-        throw error
-    }
-
-    const { latitude, longitude, name, country } = geoData.results[0]
 
     const params = new URLSearchParams({
         latitude,
@@ -55,26 +45,78 @@ export const getWeatherByCity = async (city) => {
         forecast_hours: '24',
     })
 
-    const forecastRes = await fetch(`${FORECAST_URL}?${params}`)
-    if (!forecastRes.ok) {
-        const error = new Error('Weather service unavailable')
-        error.statusCode = 502
-        throw error
-    }
-    const forecast = await forecastRes.json()
+    const res = await fetch(`${FORECAST_URL}?${params}`)
+    if (!res.ok) throw httpError('Weather service unavailable', 502)
 
-    const result = {
-        city: name,
-        country,
-        latitude,
-        longitude,
-        timezone: forecast.timezone,
-        utcOffsetSeconds: forecast.utc_offset_seconds,
-        current: forecast.current,
-        hourly: forecast.hourly,
-        daily: forecast.daily,
+    const forecast = await res.json()
+    cache.set(key, forecast)
+    return forecast
+}
+
+const buildResult = ({ name, country, admin1, latitude, longitude }, forecast) => ({
+    city: name,
+    country,
+    admin1,
+    latitude,
+    longitude,
+    timezone: forecast.timezone,
+    utcOffsetSeconds: forecast.utc_offset_seconds,
+    current: forecast.current,
+    hourly: forecast.hourly,
+    daily: forecast.daily,
+})
+
+// Autocomplete: up to 10 matching places (cities, towns, villages)
+export const searchPlaces = async (query) => {
+    const q = query.trim()
+    if (q.length < 2) return []
+
+    const key = `search:${q.toLowerCase()}`
+    const cached = cache.get(key)
+    if (cached) return cached
+
+    const res = await fetch(
+        `${GEO_URL}?name=${encodeURIComponent(q)}&count=10&language=en&format=json`
+    )
+    if (!res.ok) throw httpError('Geocoding service unavailable', 502)
+
+    const data = await res.json()
+    const places = (data.results ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        admin1: r.admin1,
+        admin2: r.admin2,
+        country: r.country,
+        countryCode: r.country_code,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        population: r.population,
+        timezone: r.timezone,
+    }))
+
+    cache.set(key, places, 600) // keep for 10 minutes
+    return places
+}
+
+// Old behaviour: take the first match for a typed name
+export const getWeatherByCity = async (city) => {
+    const q = city.trim()
+
+    const geoRes = await fetch(`${GEO_URL}?name=${encodeURIComponent(q)}&count=1&language=en&format=json`)
+    if (!geoRes.ok) throw httpError('Geocoding service unavailable', 502)
+    const geoData = await geoRes.json()
+
+    if (!geoData.results || geoData.results.length === 0) {
+        throw httpError('City not Found', 404)
     }
 
-    cache.set(key, result)
-    return result
+    const { latitude, longitude, name, country, admin1 } = geoData.results[0]
+    const forecast = await loadForecast(latitude, longitude)
+    return buildResult({ name, country, admin1, latitude, longitude }, forecast)
+}
+
+// New: exact place picked from the suggestions
+export const getWeatherByCoords = async (place) => {
+    const forecast = await loadForecast(place.latitude, place.longitude)
+    return buildResult(place, forecast)
 }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import { Quaternion, Vector3 } from 'three'
 import { LIGHT_POSITION } from '../three/constants'
+import { createMood } from '../three/weatherMood'
 
 const SceneContext = createContext(null)
 
@@ -22,13 +23,16 @@ export function SceneProvider({ children }) {
   const dash = useRef(0) // 0 = not on the dashboard, 1 = city view
   const weather = useRef(null) // latest weather result, set by the dashboard
   const [sky] = useState(() => ({ current: createSky() }))
+  const [mood] = useState(() => ({ current: createMood() })) // current weather feel, eased
   // One shared vector that every shader reads as "the light direction"
   const [lightNow] = useState(() => new Vector3(...LIGHT_POSITION).normalize())
   const [phase, setPhase] = useState('landing')
 
   const value = useMemo(
-    () => ({ scroll, mouse, stage, sun, moon, plunge, dash, weather, sky, lightNow, phase, setPhase }),
-    [phase, sky, lightNow]
+    () => ({
+      scroll, mouse, stage, sun, moon, plunge, dash, weather, sky, mood, lightNow, phase, setPhase,
+    }),
+    [phase, sky, mood, lightNow]
   )
 
   return <SceneContext.Provider value={value}>{children}</SceneContext.Provider>

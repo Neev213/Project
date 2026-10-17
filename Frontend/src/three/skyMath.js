@@ -46,6 +46,7 @@ export function computeSky(latDeg, lonDeg, date = new Date()) {
 
   return {
     q,
+    psi,
     lightDir: toWorld(enu(sun.azimuth, sun.altitude)).normalize(), // real sunlight direction
     sunDraw: toWorld(enu(sun.azimuth, drawAlt(sun.altitude))).normalize(),
     moonLocal: toEarthLocal(enu(moon.azimuth, drawAlt(moon.altitude))).multiplyScalar(MOON_DIST),

@@ -8,10 +8,12 @@ const Z = new Vector3(0, 0, 1)
 
 export const MOON_DIST = 2.6 // Moon distance in Earth-local units
 
-// suncalc: azimuth 0 = south, positive toward west. Returns east/north/up parts.
+// suncalc 2.x gives DEGREES, with azimuth clockwise from NORTH (0 = N, 90 = E, 180 = S).
+// Convert to radians, then to east / north / up parts of a unit direction.
+const body = (p) => ({ az: rad(p.azimuth), alt: rad(p.altitude) })
 const enu = (az, alt) => ({
-  e: -Math.sin(az) * Math.cos(alt),
-  n: -Math.cos(az) * Math.cos(alt),
+  e: Math.sin(az) * Math.cos(alt),
+  n: Math.cos(az) * Math.cos(alt),
   u: Math.sin(alt),
 })
 
@@ -27,12 +29,13 @@ export function computeSky(latDeg, lonDeg, date = new Date()) {
   const east = new Vector3(-Math.sin(lam), 0, -Math.cos(lam))
   const north = new Vector3(-Math.sin(phi) * Math.cos(lam), Math.cos(phi), Math.sin(phi) * Math.sin(lam))
 
-  const sun = SunCalc.getPosition(date, latDeg, lonDeg)
-  const moon = SunCalc.getMoonPosition(date, latDeg, lonDeg)
+  const sun = body(SunCalc.getPosition(date, latDeg, lonDeg))
+  const moon = body(SunCalc.getMoonPosition(date, latDeg, lonDeg))
 
-  // Face the camera toward whichever body is up (Sun first), so it is in view
-  const focus = sun.altitude > 0 || moon.altitude <= 0 ? sun : moon
-  const psi = Math.PI / 2 - Math.atan2(-Math.cos(focus.azimuth), -Math.sin(focus.azimuth))
+  // Face the camera toward whichever body is up (Sun first), so it is in view.
+  // Turning the globe by the body's compass bearing puts that bearing on world +Y.
+  const focus = sun.alt > 0 || moon.alt <= 0 ? sun : moon
+  const psi = focus.az
 
   // Earth orientation: city up -> +Z, east -> +X, north -> +Y, then turned by psi
   const basis = new Matrix4().makeBasis(east, north, up)
@@ -47,8 +50,8 @@ export function computeSky(latDeg, lonDeg, date = new Date()) {
   return {
     q,
     psi,
-    lightDir: toWorld(enu(sun.azimuth, sun.altitude)).normalize(), // real sunlight direction
-    sunDraw: toWorld(enu(sun.azimuth, drawAlt(sun.altitude))).normalize(),
-    moonLocal: toEarthLocal(enu(moon.azimuth, drawAlt(moon.altitude))).multiplyScalar(MOON_DIST),
+    lightDir: toWorld(enu(sun.az, sun.alt)).normalize(), // real sunlight direction
+    sunDraw: toWorld(enu(sun.az, drawAlt(sun.alt))).normalize(),
+    moonLocal: toEarthLocal(enu(moon.az, drawAlt(moon.alt))).multiplyScalar(MOON_DIST),
   }
 }

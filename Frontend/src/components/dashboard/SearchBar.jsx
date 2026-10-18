@@ -153,8 +153,8 @@ export default function SearchBar({ onSearch, onPrefetch, loading: weatherLoadin
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search a city or village..."
-          aria-label="Search a city or village"
+          placeholder="Search places"
+          aria-label="Search places"
           role="combobox"
           aria-expanded={showList}
           aria-autocomplete="list"

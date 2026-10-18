@@ -20,13 +20,3 @@ export const fetchWeather = async (place, { prefetch = false } = {}) => {
 // Autocomplete suggestions. Pass an AbortSignal to cancel outdated requests.
 export const searchPlaces = async (q, signal) =>
   (await api.get('/weather/search', { params: { q }, signal })).data
-
-// Most recent search, newest first. Returns null if there is none.
-export const fetchLastCity = async () => {
-  try {
-    const { data } = await api.get('/history')
-    return Array.isArray(data) && data[0]?.city ? data[0].city : null
-  } catch {
-    return null
-  }
-}

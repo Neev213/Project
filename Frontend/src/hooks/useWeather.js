@@ -66,7 +66,14 @@ export default function useWeather() {
         show(result)
       } catch (err) {
         if (id !== requestId.current) return
-        if (!fresh) setError(err.response?.data?.message || 'Could not load the weather. Please try again.')
+        if (!fresh) {
+          setError(
+            err.response?.data?.message ||
+              (err.response
+                ? 'Could not load the weather. Please try again.'
+                : 'Cannot reach the server. Check your connection.')
+          )
+        }
       } finally {
         if (id === requestId.current) setLoading(false)
       }

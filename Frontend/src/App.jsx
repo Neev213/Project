@@ -3,6 +3,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { SceneProvider } from './context/SceneContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import CanvasRoot from './three/CanvasRoot'
+import Loader from './components/Loader'
 import FlashOverlay from './components/FlashOverlay'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -19,6 +20,7 @@ export default function App() {
       <SceneProvider>
         <AuthProvider>
           <CanvasRoot />
+          <Loader />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />

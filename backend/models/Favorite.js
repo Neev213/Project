@@ -1,33 +1,19 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
-const favoriteSchema = new mongoose.Schema({
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-    },
+const favoriteSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    city: { type: String, required: true, trim: true },
+    admin1: { type: String, trim: true },
+    country: { type: String, trim: true },
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+    // coordinates rounded to ~1 km: the same place can't be saved twice
+    placeKey: { type: String, required: true },
+  },
+  { timestamps: true }
+)
 
-    city: {
-        type: String,
-        required: [true, 'City is required'],
-        trim: true,
-    },
-    country: {
-        type: String,
-        trim: true
-    },
-    latitude: {
-        type: Number,
-        required: [true, 'Latitude is required'],
-    },
-    longitude: {
-        type: Number,
-        required: [true, 'Longitude is required'],
-    },
-}, {timestamps: true});
+favoriteSchema.index({ user: 1, placeKey: 1 }, { unique: true })
 
-favoriteSchema.index({ user: 1, city: 1 }, {unique: true});
-
-const Favorite = mongoose.model('Favorite', favoriteSchema);
-
-export default Favorite;
+export default mongoose.model('Favorite', favoriteSchema)

@@ -13,6 +13,10 @@ const VERIFY_FIELDS = '+verifyCodeHash +verifyCodeExpires +verifyCodeSentAt +ver
 const normalizeEmail = (e) => String(e || '').toLowerCase().trim()
 const hashCode = (code) => crypto.createHash('sha256').update(code).digest('hex')
 
+// Input checks: only real strings of a sane length (bcrypt reads at most 72 bytes)
+const isText = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max
+const validPassword = (p) => typeof p === 'string' && p.length >= 8 && p.length <= 72
+
 const userPayload = (user) => ({
   _id: user._id,
   name: user.name,
@@ -51,8 +55,10 @@ export const register = async (req, res) => {
   const { name, password } = req.body
   const email = normalizeEmail(req.body.email)
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Please provide name, email and password' })
+  if (!isText(name, 60) || !isText(req.body.email, 254) || !validPassword(password)) {
+    return res.status(400).json({
+      message: 'Provide a name, a valid email and a password of 8 to 72 characters',
+    })
   }
 
   let user = await User.findOne({ email }).select(VERIFY_FIELDS)
@@ -135,7 +141,7 @@ export const login = async (req, res) => {
   const { password } = req.body
   const email = normalizeEmail(req.body.email)
 
-  if (!email || !password) {
+  if (!isText(req.body.email, 254) || typeof password !== 'string' || !password || password.length > 72) {
     return res.status(400).json({ message: 'Please provide valid email and password' })
   }
 
@@ -164,7 +170,9 @@ export const login = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
   const { credential } = req.body
-  if (!credential) return res.status(400).json({ message: 'Missing Google credential' })
+  if (typeof credential !== 'string' || !credential) {
+    return res.status(400).json({ message: 'Missing Google credential' })
+  }
 
   // Created here (not at module level) so process.env is already loaded
   const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)

@@ -12,6 +12,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0 <25.0.0"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -23,7 +26,6 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.0",
     "node-cache": "^5.1.2",
-    "nodemailer": "^10.1.0",
     "validator": "^13.15.35"
   },
   "devDependencies": {

@@ -3,6 +3,20 @@
 
 const BREVO_URL = 'https://api.brevo.com/v3/smtp/email'
 
+// EMAIL_FROM can be either "me@example.com" or "Weather Earth <me@example.com>".
+// Brevo wants the name and the address as two separate fields.
+function getSender() {
+  const raw = process.env.EMAIL_FROM.trim().replace(/^["']|["']$/g, '') // drop stray quotes
+  const match = raw.match(/^(.*?)\s*<([^>]+)>$/)
+  if (match) {
+    return {
+      name: match[1].replace(/^["']|["']$/g, '').trim() || process.env.EMAIL_FROM_NAME || 'Weather Earth',
+      email: match[2].trim(),
+    }
+  }
+  return { name: process.env.EMAIL_FROM_NAME || 'Weather Earth', email: raw }
+}
+
 export default async function sendEmail({ to, subject, text, html }) {
   // Development fallback: no API key configured, print the email instead
   if (!process.env.BREVO_API_KEY) {
@@ -22,10 +36,7 @@ export default async function sendEmail({ to, subject, text, html }) {
       accept: 'application/json',
     },
     body: JSON.stringify({
-      sender: {
-        name: process.env.EMAIL_FROM_NAME || 'Weather Earth',
-        email: process.env.EMAIL_FROM,
-      },
+      sender: getSender(),
       to: [{ email: to }],
       subject,
       textContent: text,

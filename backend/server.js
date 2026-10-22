@@ -45,6 +45,12 @@ app.get('/', (req, res) => {
     res.send('API is running')
 })
 
+// "Are you awake?" The site calls this when it opens, so a sleeping free server starts early.
+// It sits above the rate limits on purpose, and it does not touch the database.
+app.get('/api/health', (req, res) => {
+    res.json({ ok: true })
+})
+
 // Search-as-you-type and prefetching make many calls, so the general limit is generous
 app.use('/api', limiter(15, 1000))
 

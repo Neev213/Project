@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import CanvasRoot from './three/CanvasRoot'
 import Loader from './components/Loader'
 import FlashOverlay from './components/FlashOverlay'
+import ServerNotice from './components/ServerNotice'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -34,6 +35,7 @@ export default function App() {
             />
           </Routes>
           <FlashOverlay />
+          <ServerNotice />
         </AuthProvider>
       </SceneProvider>
     </GoogleOAuthProvider>
